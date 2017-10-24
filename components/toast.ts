@@ -1,16 +1,31 @@
 import {pool_mgr} from "../pool/pool_mgr"
 import {handler, gen_handler} from "../utils"
-
-const prefab_path:string = "prefabs/toast_tips";
+import {appdata} from "../../appdata"
+import {TweenUtil} from "../tween/tweenutil"
 
 export class toast
 {
     private static inst:toast;
-    private queue:toast_item[];
-    private is_show:boolean;
+    private anchors:cc.Node[];
+    private pool_nodes:cc.Node[];
+    private using_nodes:cc.Node[];
 
     private constructor()
     {
+        this.pool_nodes = [];
+        this.using_nodes = [];
+        this.anchors = [];
+
+        appdata.app.toast.children.forEach((node) => {
+            if(node.name.indexOf("tip") != -1)
+            {
+                this.pool_nodes.push(node);
+            }
+            if(node.name.indexOf("anchor") != -1)
+            {
+                this.anchors.push(node);
+            }
+        });
     }
 
     static get_inst():toast
@@ -22,65 +37,82 @@ export class toast
         return this.inst;
     }
     
-    static show(content:string, duration:number = 1, delay:number = 0):void
+    static show(content:string)
     {
-        toast.get_inst().show(content, duration, delay);
+        toast.get_inst().show(content);
     }
 
-    show(content:string, duration:number = 1, delay:number = 0):void
+    show(content:string)
     {
-        if(!this.queue)
+        let node = this.pool_nodes.pop();
+        if(!node)
         {
-            this.queue = [];
+            this.layout_nodes();
+            node = this.using_nodes.shift();
+            node.removeFromParent();
         }
-        let item:toast_item = new toast_item();
-        item.content = content;
-        item.duration = duration;
-        item.delay = delay;
-        this.queue.push(item);
-        if(!this.is_show)
-        {
-            this.pop_next();
-        }
+        this.using_nodes.push(node);
+
+        //找到第一个空的位置
+        let anchor = this.anchors.find((ar) => {
+            return ar.childrenCount == 0;
+        });
+        node.parent = anchor;
+        node.setPosition(0, 0);
+        this.handle_node(node, content);
+        this.set_top();
     }
 
-    private pop_next():void
+    private handle_node(node:cc.Node, content:string)
     {
-        let item:toast_item = this.queue.shift();
-        if(!item)
+        node.active = true;
+        node.opacity = 255;
+        this.set_content(node, content);
+        node.runAction(cc.sequence(cc.delayTime(1.5), cc.fadeOut(0.4), cc.callFunc(this.on_node_hide, this, node)));
+    }
+
+    private set_content(node:cc.Node, content:string)
+    {
+        let bg_node:cc.Node = node.getChildByName("bg");
+        let txt_node:cc.Node = node.getChildByName("txt");
+        let txt = txt_node.getComponent(cc.Label);
+        txt.overflow = cc.Label.Overflow.NONE;
+        txt.string = content;
+        // cc.info("set_content, width=", txt_node.width);
+        // if(txt_node.width > 500)
+        // {
+        //     txt.overflow = cc.Label.Overflow.RESIZE_HEIGHT;
+        //     txt_node.width = 500;
+        // }
+        bg_node.setContentSize(txt_node.width + 20, txt_node.height + 20);
+    }
+
+    private on_node_hide(node:cc.Node)
+    {
+        node.removeFromParent();
+        let index = this.using_nodes.findIndex((pnode) => {
+            return pnode == node;
+        });
+        this.using_nodes.splice(index, 1);
+        this.pool_nodes.push(node);
+    }
+
+    private set_top()
+    {
+        let toast = appdata.app.toast;
+        toast.setSiblingIndex(toast.parent.childrenCount - 1);
+    }
+
+    private layout_nodes()
+    {
+        if(this.using_nodes.length <= 0)
         {
-            this.is_show = false;
             return;
         }
-        this.is_show = true;
-        pool_mgr.get_inst().get_ui(prefab_path, gen_handler((node:cc.Node):void=>{
-            cc.game.addPersistRootNode(node);
-            // cc.director.getScene().addChild(node);
-            this.set_content(node, item);
-            node.runAction(cc.sequence(cc.delayTime(item.delay), cc.fadeOut(item.duration), cc.callFunc(this.on_toast_finish, this, node)));
-        }, this));
+        for(let i = this.using_nodes.length - 1; i > 0; i--)
+        {
+            this.using_nodes[i].parent = this.using_nodes[i-1].parent;
+            this.using_nodes[i].setPosition(0, 0);
+        }
     }
-
-    private set_content(node:cc.Node, item:toast_item):void
-    {
-        let txt_node:cc.Node = node.getChildByName("txt");
-        let bg_node:cc.Node = node.getChildByName("bg");
-        txt_node.getComponent(cc.Label).string = item.content;
-        let txt_size:cc.Size = txt_node.getContentSize();
-        bg_node.setContentSize(txt_size.width + 20, txt_size.height + 20);
-    }
-
-    private on_toast_finish(node:cc.Node):void
-    {
-        node.opacity = 255;
-        pool_mgr.get_inst().put_ui(prefab_path, node);
-        this.pop_next();
-    }
-}
-
-class toast_item
-{
-    content:string;
-    delay:number;
-    duration:number;
 }

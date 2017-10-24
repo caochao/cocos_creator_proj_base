@@ -127,9 +127,9 @@ export function load_head(sprite, head_name)
     {
         head_name = consts.MISC.DEFAULT_HEAD;
     }
-    loader_mgr.get_inst().loadAsset(head_name, gen_handler((res) => {
-        sprite.spriteFrame = res;
-    }), cc.SpriteFrame);
+    loader_mgr.get_inst().loadAsset("heads/dz_head", gen_handler((atlas:cc.SpriteAtlas) => {
+        sprite.spriteFrame = atlas.getSpriteFrame(head_name);
+    }), cc.SpriteAtlas);
 }
 
 export function load_img(sprite, img_path)

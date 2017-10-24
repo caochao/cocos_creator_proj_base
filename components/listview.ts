@@ -21,7 +21,7 @@ export class ListView
     private item_setter:(item:cc.Node, data:any, index:number)=>void;
     private recycle_cb:(item:cc.Node)=>void;
     private select_cb:(data:any, index:number)=>void;
-    private select_setter:(item:cc.Node, is_select:boolean)=>void;
+    private select_setter:(item:cc.Node, is_select:boolean, index:number)=>void;
     private scroll_to_end_cb:()=>void;
     private auto_scrolling:boolean;
     private items:ListItem[];
@@ -97,7 +97,7 @@ export class ListView
 
     private on_scrolling()
     {
-        if(!this.items)
+        if(!this.items || !this.items.length)
         {
             return;
         }
@@ -129,7 +129,7 @@ export class ListView
             {
                 this.start_index = start;
                 this.stop_index = stop;
-                cc.info("render_from:", start, stop);
+                // cc.info("render_from:", start, stop);
                 this.render_items();
             }
         }
@@ -161,7 +161,7 @@ export class ListView
             {
                 this.start_index = start;
                 this.stop_index = stop;
-                cc.info("render_from:", start, stop);
+                // cc.info("render_from:", start, stop);
                 this.render_items();
             }
         }
@@ -169,6 +169,10 @@ export class ListView
 
     select_item(index)
     {
+        if(index == this._selected_index)
+        {
+            return;
+        }
         if(this._selected_index != -1)
         {
             this.inner_select_item(this._selected_index, false);
@@ -187,7 +191,7 @@ export class ListView
         item.is_select = is_select;
         if(item.node && this.select_setter)
         {
-            this.select_setter.call(this.cb_host, item.node, is_select);
+            this.select_setter.call(this.cb_host, item.node, is_select, index);
         }
         if(is_select)
         {
@@ -206,7 +210,7 @@ export class ListView
         {
             node = cc.instantiate(this.item_tpl);
             node.active = true;
-            cc.info("spawn_node", index);
+            // cc.info("spawn_node", index);
         }
         node.parent = this.content;
         return node;
@@ -244,7 +248,7 @@ export class ListView
             item = this.items[i];
             if(item.node)
             {
-                cc.info("recycle_item", i);
+                // cc.info("recycle_item", i);
                 this.recycle_item(item);
             }
         }
@@ -253,7 +257,7 @@ export class ListView
             item = this.items[i];
             if(item.node)
             {
-                cc.info("recycle_item", i);
+                // cc.info("recycle_item", i);
                 this.recycle_item(item);
             }
         }
@@ -262,12 +266,12 @@ export class ListView
             item = this.items[i];
             if(!item.node)
             {
-                cc.info("render_item", i);
+                // cc.info("render_item", i);
                 item.node = this.spawn_node(i);
                 this.item_setter.call(this.cb_host, item.node, item.data, i);
-                if(item.is_select && this.select_setter)
+                if(this.select_setter)
                 {
-                    this.select_setter.call(this.cb_host, item.node, true);
+                    this.select_setter.call(this.cb_host, item.node, item.is_select, i);
                 }
             }
             item.node.setPosition(item.x, item.y);
@@ -519,15 +523,15 @@ type ListViewParams = {
     height?:number;
     gap_x?:number;
     gap_y?:number;
-    row?:number;                                                //水平方向排版时，垂直方向上的行数
-    column?:number;                                             //垂直方向排版时，水平方向上的列数
-    cb_host?:any;                                               //回调函数host
-    item_setter:(item:cc.Node, data:any, index:number)=>void;   //item更新setter
-    recycle_cb?:(item:cc.Node)=>void;                           //回收时的回调
-    select_cb?:(data:any, index:number)=>void;                  //item选中回调
-    select_setter?:(item:cc.Node, is_select:boolean)=>void;      //item选中效果setter
-    scroll_to_end_cb?:()=>void;                                  //滚动到尽头的回调
-    auto_scrolling?:boolean;                                     //append时自动滚动到尽头
+    row?:number;                                                                //水平方向排版时，垂直方向上的行数
+    column?:number;                                                             //垂直方向排版时，水平方向上的列数
+    cb_host?:any;                                                               //回调函数host
+    item_setter:(item:cc.Node, data:any, index:number)=>void;                   //item更新setter
+    recycle_cb?:(item:cc.Node)=>void;                                           //回收时的回调
+    select_cb?:(data:any, index:number)=>void;                                  //item选中回调
+    select_setter?:(item:cc.Node, is_select:boolean, index:number)=>void;       //item选中效果setter
+    scroll_to_end_cb?:()=>void;                                                 //滚动到尽头的回调
+    auto_scrolling?:boolean;                                                    //append时自动滚动到尽头
 }
 
 type ListItem = {

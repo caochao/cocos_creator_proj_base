@@ -74,6 +74,9 @@ export const enum Event_Name {
     PHONE_CHANGED,
     PHOTONAME_UPDATE,
     BALANCE_UPDATE,
-    SYSTEM_NOTICE_UPDATED,
+    NOTICE_UPDATED,
     PACK_ROOM_INFO_UPDATE,
+    BANKCARD_UPDATE,
+    //微信支付返回
+    WXPAY_RETURN,
 }

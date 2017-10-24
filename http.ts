@@ -214,10 +214,9 @@ export default class http_client
 
     private unregister_all()
     {
-        for(let key of this.context_protos.keys())
-        {
+        this.context_protos.forEach((value, key) => {
             this.unregister_listeners(key);
-        }
+        });
     }
 
     private handle_http_response(proto_name:string, req_data:any, is_ok:boolean, resp:any)
@@ -228,9 +227,7 @@ export default class http_client
             this.error_handler.exec(resp.rescode, resp.resmsg);
             if(resp.rescode == 4)
             {
-                //session过期
-                appdata.logout();
-                cc.director.loadScene(consts.SCENE_NAME.LOGIN);
+                appdata.loadScene(consts.SCENE_NAME.START);
                 return;
             }
         }

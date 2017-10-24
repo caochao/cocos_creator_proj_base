@@ -57,13 +57,12 @@ export class Loading extends cc.Component {
             this._am.setMaxConcurrentTask(2);
             cc.info("Max concurrent tasks count have been limited to 2");
         }
-        this.progressbar.progress = 0;
 
-        //检查版本更新
+        //检查更新, 正式版本启用
         this.checkUpdate();
     }
 
-    onDestroy() 
+    onDestroy()
     {
         if (this._updateListener) 
         {
@@ -80,11 +79,6 @@ export class Loading extends cc.Component {
             this._am.release();
             this._am = null;
         }
-    }
-
-    private enter_game()
-    {
-        cc.director.loadScene(consts.SCENE_NAME.LOGIN);
     }
 
     private checkCb(event:jsb.EventAssetsManager) 
@@ -122,7 +116,7 @@ export class Loading extends cc.Component {
         }
         if(failed)
         {
-            this.enter_game();
+            cc.info("do not need hotupdate");
         }
     }
 
@@ -180,7 +174,7 @@ export class Loading extends cc.Component {
             this._updating = false;
         }
 
-        //更新成功重启游戏，通过checkCb进入游戏
+        //更新成功重启游戏
         if(needRestart) 
         {
             cc.eventManager.removeListener(this._updateListener);
@@ -258,7 +252,6 @@ function verify_func(path, asset)
     else 
     {
         return true;
-        // return mytool.gen_md5(content) == expectedMD5;   //暂时没法判断图片内容md5
     }
 }
 

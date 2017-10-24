@@ -1,6 +1,6 @@
 import * as consts from "../consts"
+import * as format from "../3rd/sprintfjs/format"
 import {handler, gen_handler} from "./utils"
-import {sprintf} from "../3rd/sprintfjs/format"
 import {toast} from "./components/toast"
 import {appdata} from "../appdata"
 import {pb} from "../proto/pb"
@@ -29,7 +29,7 @@ export class Net
         this.error_handler.retain();
         this.cmd_listeners = new Map();     //测试发现Map索引[]和get, delete不能混用，否则会出现取不到值。
         this.context_cmds = new Map();      //例如session_data[key] = value, session_data.get(key)会为null;
-        this.session_data = new Map();
+        this.session_data = new Map();      //Map只能通过foreach遍历
         this.session = 0;                   //send函数使session从1开始，服务器推送的数据包session默认为0
     }
 
@@ -91,6 +91,7 @@ export class Net
         {
             return;
         }
+        //调用close方法会触发on_ws_close
         this.ws.close();
     }
 
@@ -107,6 +108,22 @@ export class Net
     private on_ws_error(event:Event):any
     {
         cc.info("socket error", event);
+        toast.show("网络连接异常，请稍后重试");
+    }
+
+    private on_ws_close(event:CloseEvent):any
+    {
+        //code定义见https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent
+        cc.info("socket closed, code=", event.code);
+        this.is_connected = false;
+        this.is_connecting = false;
+        toast.show("网络连接断开，请重新登录");
+
+        //退出登录
+        if(cc.director.getScene().name != consts.SCENE_NAME.START)
+        {
+            appdata.loadScene(consts.SCENE_NAME.START);
+        }
     }
 
     private on_ws_message(event:MessageEvent):any
@@ -118,21 +135,6 @@ export class Net
             return;
         }
         this.handle_response(msg);
-    }
-
-    private on_ws_close(event:CloseEvent):any
-    {
-        //code定义见https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent
-        cc.info("socket closed, code=", event.code);
-        this.is_connected = false;
-        this.is_connecting = false;
-
-        //退出登录
-        if(cc.director.getScene().name != consts.SCENE_NAME.START)
-        {
-            appdata.logout();
-            appdata.loadScene(consts.SCENE_NAME.START);
-        }
     }
 
     private handle_response(msg:pb.IS2C)
@@ -231,10 +233,9 @@ export class Net
 
     private unregister_all()
     {
-        for(let key of this.context_cmds.keys())
-        {
+        this.context_cmds.forEach((value, key) => {
             this.unregister_listeners(key);
-        }
+        });
     }
 
     private register_error_handler(cb:handler)

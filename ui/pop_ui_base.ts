@@ -2,6 +2,7 @@ import {pop_mgr, UI_CONFIG} from "./pop_mgr"
 import {pool_mgr} from "../pool/pool_mgr"
 import {handler, gen_handler} from "../utils"
 import {Net} from "../net"
+import {AudioPlayer, AUDIO_CONFIG} from "../../common/audio/audioplayer"
 
 const {ccclass, property} = cc._decorator;
 const pop_overlay_bg:string = "panel_overlay_bg";
@@ -95,5 +96,6 @@ export class POP_UI_BASE extends cc.Component {
     private on_click_btn_close():void
     {
         this.hide();
+        AudioPlayer.getInst().play_sound(AUDIO_CONFIG.BUTTON_CLICK);
     }
 }

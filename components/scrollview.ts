@@ -13,7 +13,7 @@ export class ScrollView
     private gap_y:number;
     private cb_host:any;
     private item_setter:(item:cc.Node, key:string, data:any, index:number)=>[number, number];
-    private recycle_cb:(item:cc.Node)=>void;
+    private recycle_cb:(item:cc.Node, key:string)=>void;
     private scroll_to_end_cb:()=>void;
     private auto_scrolling:boolean;
     private items:ScrollItem[];
@@ -73,7 +73,7 @@ export class ScrollView
 
     private on_scrolling()
     {
-        if(!this.items)
+        if(!this.items || !this.items.length)
         {
             return;
         }
@@ -174,7 +174,7 @@ export class ScrollView
             pools.push(item.node);
             if(this.recycle_cb)
             {
-                this.recycle_cb.call(this.cb_host, item.node);
+                this.recycle_cb.call(this.cb_host, item.node, item.data.key);
             }
             item.node.removeFromParent();
             item.node = null;
@@ -377,12 +377,11 @@ export class ScrollView
     destroy()
     {
         this.clear_items();
-        for(let pools of this.node_pools.values())
-        {
+        this.node_pools.forEach((pools, key) => {
             pools.forEach((node) => {
                 node.destroy();
             });
-        }
+        });
         this.node_pools = null;
         this.items = null;
         
@@ -423,7 +422,7 @@ type ScrollViewParams = {
     gap_y?:number;
     cb_host?:any;                                                                       //回调函数host
     item_setter:(item:cc.Node, key:string, data:any, index:number)=>[number, number];   //item更新setter
-    recycle_cb?:(item:cc.Node)=>void;                                                   //回收时的回调
+    recycle_cb?:(item:cc.Node, key:string)=>void;                                                   //回收时的回调
     scroll_to_end_cb?:()=>void;                                                         //滚动到尽头的回调
     auto_scrolling?:boolean;                                                            //append时自动滚动到尽头
 }

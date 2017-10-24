@@ -108,9 +108,10 @@ export class TimerMgr
 
             if(node.data.elapsed >= node.data.delay + node.data.interval)
             {
-                node.data.cb.exec();
                 node.data.times++;
                 node.data.elapsed = node.data.delay - dt;
+                //todo fix:在timer回调函数里先remove，再add一个定时器，复用data会导致times和elpased马上被修改
+                node.data.cb.exec();
             }
 
             node.data.elapsed += dt;
