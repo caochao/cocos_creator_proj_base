@@ -435,6 +435,54 @@ export class ListView
         this.insert_data(this.items.length, ...datas);
     }
 
+    scroll_to(index:number)
+    {
+        if(this.dir == ListViewDir.Vertical)
+        {
+			const min_y = this.height - this.content.height;
+			if(min_y >= 0)
+			{
+				cc.info("no need to scroll");
+				return;
+			}
+			let [_, y] = LayoutUtil.vertical_layout(index, this.item_width, this.item_height, this.col, this.gap_x, this.gap_y);
+			if(y < min_y)
+			{
+				y = min_y;
+				cc.info("content reach bottom");
+			}
+			if(y > 0)
+			{
+				y = 0;
+				cc.info("content reach top");
+			}
+			this.scrollview.setContentPosition(cc.v2(this.content.getPositionX(), -y));
+			this.on_scrolling();
+        }
+        else
+        {
+			const max_x = this.content.width - this.width;
+			if(max_x <= 0)
+			{
+				cc.info("no need to scroll");
+				return;
+			}
+			let [x, _] = LayoutUtil.horizontal_layout(index, this.item_width, this.item_height, this.row, this.gap_x, this.gap_y);
+			if(x > max_x)
+			{
+				x = max_x;
+				cc.info("content reach right");
+			}
+			if(x < 0)
+			{
+				x = 0;
+				cc.info("content reach left");
+			}
+			this.scrollview.setContentPosition(cc.v2(-x, this.content.getPositionY()));
+			this.on_scrolling();
+        }
+    }
+
     scroll_to_end()
     {
         if(this.dir == ListViewDir.Vertical)
@@ -464,6 +512,10 @@ export class ListView
         this._datas[index] = data;
         if(item.node)
         {
+            if(this.recycle_cb)
+            {
+                this.recycle_cb.call(this.cb_host, item.node);
+            }
             this.item_setter.call(this.cb_host, item.node, item.data, index);
         }
     }
