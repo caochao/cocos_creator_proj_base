@@ -1,15 +1,19 @@
 import {pool_mgr} from "../pool/pool_mgr"
-import {handler, gen_handler} from "../utils"
+import {handler, gen_handler} from "../util"
 import {POP_UI_BASE} from "./pop_ui_base"
 
 export class pop_mgr
 {
     private static inst:pop_mgr;
-    private ui_cache:any;      //path => pop_ui
+    private ui_cache:any;           //path => pop_ui
+    private ui_stack:Array<string>; //ui stacks
+    private ui_show_handler:handler;
+    private ui_hide_handler:handler;
 
     private constructor()
     {
         this.ui_cache = {};
+        this.ui_stack = new Array<string>();
     }
 
     static get_inst():pop_mgr
@@ -38,6 +42,18 @@ export class pop_mgr
             this.hide(path);
         }
         this.ui_cache = {};
+        this.ui_stack.length = 0;
+    }
+
+    peek()
+    {
+        return this.ui_stack[this.ui_stack.length - 1];
+    }
+
+    set_handlers(on_ui_show:handler, on_ui_hide:handler)
+    {
+        this.ui_show_handler = on_ui_show;
+        this.ui_hide_handler = on_ui_hide;
     }
 
     is_show(path:string):boolean
@@ -66,6 +82,13 @@ export class pop_mgr
             let ui_base:POP_UI_BASE = node.getComponent(POP_UI_BASE);
             ui_base.ui_name = path;
             ui_base.__show__(...params);
+            //进栈
+            this.ui_stack.push(path);
+            //钩子函数调用
+            if(this.ui_show_handler)
+            {
+                this.ui_show_handler.exec();
+            }
         }, this));
     }
 
@@ -85,6 +108,17 @@ export class pop_mgr
             //调用hide
             let ui_base:POP_UI_BASE = ui.node.getComponent(POP_UI_BASE);
             ui_base.__hide__();
+            //出栈
+            const lastIdx = this.ui_stack.lastIndexOf(path);
+            if(lastIdx != -1)
+            {
+                this.ui_stack.splice(lastIdx, 1);
+            }
+            //钩子函数调用
+            if(this.ui_hide_handler)
+            {
+                this.ui_hide_handler.exec();
+            }
         }
     }
 }
@@ -96,37 +130,11 @@ type pop_ui = {
 
 //界面prefab路径配置, 相对于assets/resources目录
 export const UI_CONFIG = {
-    overlay_bg:"prefabs/panel_overlay_bg",
-    login:"prefabs/panel_login",
-    register:"prefabs/panel_register",
-    findpwd:"prefabs/panel_findpwd",
-    myinfo:"prefabs/panel_myinfo",
-    setting:"prefabs/panel_setting",
-    open_pack:"prefabs/panel_openpack",
-    cash:"prefabs/panel_cash",
-    cashlist:"prefabs/panel_cashlist",
-    present:"prefabs/panel_present",
-    updatepwd:"prefabs/panel_updatepwd",
-    bindcard:"prefabs/panel_bindcard",
-    unbindcard:"prefabs/panel_unbindcard",
-    bind_phone:"prefabs/panel_bindphone",
-    reset_pwd:"prefabs/panel_resetpwd",
-    msg_box:"prefabs/panel_msgbox",
-    notice:"prefabs/panel_notice",
-    transaction:"prefabs/panel_transaction",
-    lottery_order:"prefabs/panel_lotorder",
-    ssc_history:"prefabs/panel_sschistory",
-    ssc_record:"prefabs/panel_sscrecord",
-    ssc_result:"prefabs/panel_sscresult",
-    ssc_todayover:"prefabs/panel_ssctodayover",
-    head_list:"prefabs/panel_headlist",
-    custom_srv:"prefabs/panel_customservice",
-    server_list:"prefabs/panel_serverlist",
-    create_pack_room:"prefabs/panel_createpackroom",
-    create_sg_room:"prefabs/panel_createsgroom",
-    create_ros_room:"prefabs/panel_createrosroom",
-    join_room:"prefabs/panel_joinroom",
-    game_music:"prefabs/panel_gamemusic",
-    ros_play:"prefabs/panel_roshambo",
-    recharge:"prefabs/panel_recharge",
+    overlay_bg:"panels/panel_overlay_bg",
+    level:"panels/panel_level",
+    level_detail:"panels/panel_leveldetail",
+    game:"panels/panel_game",
+    level_result:"panels/panel_levelresult",
+    level_reward:"panels/panel_levelreward",
+    rank:"panels/panel_rank",
 }
