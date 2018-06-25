@@ -1,4 +1,4 @@
-import {handler, gen_handler} from "../utils"
+import {handler, gen_handler} from "../util"
 
 export class loader_mgr
 {
@@ -12,6 +12,66 @@ export class loader_mgr
             loader_mgr.inst = new loader_mgr();
         }
         return loader_mgr.inst;
+    }
+
+    /**从远程url下载资源 */
+    loadExternalAsset(url:string, cb:handler, type?:string)
+    {
+        const res = cc.loader.getRes(url);
+        if(res)
+        {
+            // console.log("loadExternalAsset from cache");
+            cb.exec(res);
+            return;
+        }
+        cc.loader.load(type ? {url, type} : url, (err, res) => {
+            if(err)
+            {
+                cc.warn("loadExternalAsset error", url);
+                return;
+            }
+            cb.exec(res);
+        });
+    }
+
+    /**从远程url下载资源列表 */
+    loadExternalAssets(urls:string[], cb:handler, types?:string[])
+    {
+        let loaded_res = {};
+        let unloaded_urls:string[] = [];
+        urls.forEach(url => {
+            let res = cc.loader.getRes(url);
+            if(res)
+            {
+                loaded_res[url] = res;
+            }
+            else
+            {
+                unloaded_urls.push(url);
+            }
+        });
+        if(unloaded_urls.length == 0)
+        {
+            cb.exec(loaded_res);
+            return;
+        }
+
+        const loadTasks = [];
+        unloaded_urls.forEach((url, i) => {
+            types ? loadTasks.push({url, type:types[i]}) : loadTasks.push(url);
+        })
+        cc.loader.load(loadTasks, (errs, res) => {
+            cc.info("loadExternalAssets from remote url");
+            if(errs)
+            {
+                cc.warn("loadExternalAssets error", errs);
+                return;
+            }
+            unloaded_urls.forEach(url => {
+                loaded_res[url] = res.getContent(url);
+            });
+            cb.exec(loaded_res);
+        });
     }
 
     /**从resources目录加载rawasset，rawaaset是指cc.Texture2D, cc.AudioClip, cc.ParticleAsset*/
