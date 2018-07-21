@@ -2,8 +2,8 @@
 cocos creator项目基础类库，包括socket, http网络连接，资源加载与管理，ui加载与管理，事件系统，音效播放，常用控件如listview，scrollview等
 
 使用说明:
-2.ScrollView, 循环滚动列表，支持不定尺寸的item, 屏幕可见范围外item会回收等待下次复用
-1).初始化，传入item模板列表，设置各种回调函数
+* ScrollView, 循环滚动列表，支持不定尺寸的item, 屏幕可见范围外item会回收等待下次复用
+   1.初始化，传入item模板列表，设置各种回调函数
 ```
 const templates:ScrollItemTemplate[] = [
    {key:MsgType.ROUND_START.toString(), node:this.item_roundstart},
@@ -74,7 +74,7 @@ item_setter(item:cc.Node, key:string, data:any, index:number):[number, number]
   }
 }
 ```
-2).追加数据, 传入key及item数据
+   2.追加数据, 传入key及item数据
 ```
 const notify:pb.IRoomChatNotify = resp.roomChatNotify;
 const key:number = notify.sender.acc == appdata.user.acc ? MsgType.RIGHT_CHAT : MsgType.LEFT_CHAT;
