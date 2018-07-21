@@ -2,9 +2,61 @@
 cocos creator项目基础类库，包括socket, http网络连接，资源加载与管理，ui加载与管理，事件系统，音效播放，常用控件如listview，scrollview等
 
 使用说明:
-* ScrollView, 循环滚动列表，支持不定尺寸的item, 屏幕可见范围外item会回收等待下次复用
+* ListView, 循环滚动列表，固定尺寸item, 屏幕可见范围外item会回收等待下次复用。支持横向，竖向，多行多列。
+   1.初始化，传入item模板节点(cc.Node)，设置各种回调函数
+   ```
+   @property(cc.ScrollView)
+    scrollview: cc.ScrollView = null;
 
-   1.初始化，传入item模板列表，设置各种回调函数
+    @property(cc.Node)
+    mask: cc.Node = null;
+
+    @property(cc.Node)
+    content: cc.Node = null;
+
+    @property(cc.Node)
+    item_tpl:cc.Node = null;
+
+    private list:ListView.ListView;
+
+    on_show(...params)
+    {
+        this.list = new ListView.ListView({
+            scrollview:this.scrollview,
+            mask:this.mask,
+            content:this.content,
+            item_tpl:this.item_tpl,
+            cb_host:this,
+            item_setter:this.list_item_setter,
+            select_cb:this.list_item_onselect,
+            recycle_cb:this.list_item_onrecycle,
+            column:1,
+            gap_y:10,
+            direction:ListView.ListViewDir.Vertical,
+        });
+        this.list.set_data(Consts.AllStages);
+    }
+   ```
+   2.设置item回调函数
+   ```
+   list_item_setter(item:cc.Node, desc:Consts.StageDesc, index:number):void
+    {
+        const isOpen = appdata.getStageOpenState(desc.stage, desc.unlockcond, desc.total);
+        const isPassed = appdata.isStagePassed(desc.stage, desc.total);
+
+        const cond = item.getChildByName("cond");
+        const txt_cond = cond.getChildByName("txt_cond");
+        const txt_progress = item.getChildByName("txt_progress");
+        const btn_share = item.getChildByName("btn_share");
+        const img_star = item.getChildByName("img_star");
+        const gold_star = img_star.getChildByName("gold_star");
+        //省略
+    }
+   ```
+   
+* ScrollView, 循环滚动列表，支持不定尺寸的item, 屏幕可见范围外item会回收等待下次复用。支持横向，竖向, 但不支持多行多列。
+
+   1.初始化，传入item模板节点(cc.Node)列表，设置各种回调函数
    ```
    const templates:ScrollItemTemplate[] = [
       {key:MsgType.ROUND_START.toString(), node:this.item_roundstart},
@@ -33,8 +85,7 @@ cocos creator项目基础类库，包括socket, http网络连接，资源加载�
        direction:ScrollDirection.Vertical,
    });
    ```
-
-   2.设置item回调里根据key及data为对应模板item节点设置数据
+   2.设置item回调内部根据传入的key及data为对应item节点设置数据
    ```
    item_setter(item:cc.Node, key:string, data:any, index:number):[number, number]
    {
