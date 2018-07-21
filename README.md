@@ -3,6 +3,7 @@ cocos creator项目基础类库，包括socket, http网络连接，资源加载�
 
 使用说明:
 * ScrollView, 循环滚动列表，支持不定尺寸的item, 屏幕可见范围外item会回收等待下次复用
+
    1.初始化，传入item模板列表，设置各种回调函数
    ```
    const templates:ScrollItemTemplate[] = [
