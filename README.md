@@ -3,6 +3,7 @@ cocos creator项目基础类库，包括socket, http网络连接，资源加载�
 
 使用说明:
 * ListView, 循环滚动列表，固定尺寸item, 屏幕可见范围外item会回收等待下次复用。支持横向，竖向，多行多列。
+   
    1.初始化，传入item模板节点(cc.Node)，设置各种回调函数
    ```
    @property(cc.ScrollView)
