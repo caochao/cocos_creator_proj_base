@@ -136,3 +136,36 @@ cocos creator项目基础类库，包括socket, http网络连接，资源加载�
    let data:ScrollItemData = {key:key.toString(), data:notify};
    this.scview.append_data(data);
    ```
+
+3.TweenUtil, 缓动工具
+
+   * 传入节点，用时，延时，要变动的属性, 曲线函数
+   ```
+   let tween = TweenUtil.to({
+       node:coin, duration:0.8, delay:delay, x:dest_pos.x, y:dest_pos.y, tweenFunc:TweenFunc.Sine.easeIn,
+       onComplete:utils.gen_handler(this.on_fly_to_dest, this)
+   });
+   ```
+   * 取消缓动
+   ```
+   TweenUtil.kill(tween);
+   ```
+   
+4.TimerMgr, 定时器
+   
+   * 无限循环
+   ```
+   TimerMgr.getInst().loop(0.1, utils.gen_handler(this.loop, this));
+   ```
+   * 循环10次
+   ```
+   TimerMgr.getInst().loopTimes(0.1, 10, utils.gen_handler(this.loopTimes, this));
+   ```
+   * 延时0.2秒后再循环
+   ```
+   TimerMgr.getInst().delayLoop(0.1, 0.2, utils.gen_handler(this.delayLoop, this));
+   ```
+   * 延时0.2秒后招行一次
+   ```
+   TimerMgr.getInst().once(0.2, utils.gen_handler(this.once, this));
+   ```
