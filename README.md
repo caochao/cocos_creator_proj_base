@@ -161,11 +161,11 @@ cocos creator项目基础类库，包括socket, http网络连接，资源加载�
    ```
    TimerMgr.getInst().loopTimes(0.1, 10, utils.gen_handler(this.loopTimes, this));
    ```
-   * 延时0.2秒后再循环
+   * 0.2秒后再循环
    ```
    TimerMgr.getInst().delayLoop(0.1, 0.2, utils.gen_handler(this.delayLoop, this));
    ```
-   * 延时0.2秒后招行一次
+   * 0.2秒后执行一次
    ```
    TimerMgr.getInst().once(0.2, utils.gen_handler(this.once, this));
    ```
