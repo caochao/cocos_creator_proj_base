@@ -1,8 +1,8 @@
 import {pop_mgr, UI_CONFIG} from "./pop_mgr"
 import {pool_mgr} from "../pool/pool_mgr"
-import {handler, gen_handler} from "../utils"
-import {Net} from "../net"
-import {AudioPlayer, AUDIO_CONFIG} from "../../common/audio/audioplayer"
+import {handler, gen_handler} from "../util"
+import * as Audio from "../../common/audio/audioplayer"
+import {wxHttpClient} from "../../common/wxapi/index"
 
 const {ccclass, property} = cc._decorator;
 const pop_overlay_bg:string = "panel_overlay_bg";
@@ -11,7 +11,7 @@ const pop_overlay_bg:string = "panel_overlay_bg";
 export class POP_UI_BASE extends cc.Component {
 
 	@property(cc.Button)
-    btn_close: cc.Button;
+    btn_close: cc.Button = null;
 
     //界面名字，UI_CONFIG.*
     private _ui_name:string;
@@ -38,7 +38,7 @@ export class POP_UI_BASE extends cc.Component {
         cc.info("show", this._ui_name, ...params);
         if(this.btn_close)
         {
-            this.btn_close.node.on(cc.Node.EventType.TOUCH_END, this.on_click_btn_close, this);
+            this.btn_close.node.on(cc.Node.EventType.TOUCH_END, this.onCloseBtnTouch, this);
         }
         this.on_show(...params);
         this.is_show = true;
@@ -68,10 +68,10 @@ export class POP_UI_BASE extends cc.Component {
         cc.info("hide", this._ui_name);
         if(this.btn_close)
         {
-            this.btn_close.node.off(cc.Node.EventType.TOUCH_END, this.on_click_btn_close, this);
+            this.btn_close.node.off(cc.Node.EventType.TOUCH_END, this.onCloseBtnTouch, this);
         }
         this.on_hide();
-        Net.unregister_listeners(this);
+        wxHttpClient.unregisterCtxHandler(this);
         this.is_show = false;
     }
 
@@ -93,9 +93,9 @@ export class POP_UI_BASE extends cc.Component {
         pop_mgr.get_inst().hide(this._ui_name);
     }
 
-    private on_click_btn_close():void
+    onCloseBtnTouch():void
     {
         this.hide();
-        AudioPlayer.getInst().play_sound(AUDIO_CONFIG.BUTTON_CLICK);
+        Audio.AudioPlayer.getInst().play_sound(Audio.AUDIO_CONFIG.Audio_Btn);
     }
 }

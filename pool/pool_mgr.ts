@@ -1,5 +1,5 @@
 import {loader_mgr} from "../loader/loader_mgr"
-import {handler, gen_handler} from "../utils"
+import {handler, gen_handler} from "../util"
 import {ui_pool} from "./ui_pool"
 
 export class pool_mgr

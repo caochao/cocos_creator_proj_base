@@ -1,10 +1,10 @@
 import {loader_mgr} from "../loader/loader_mgr"
-import {gen_handler, handler, localStorage} from "../utils"
-import * as format from "../../3rd/sprintfjs/format"
-import * as consts from "../../consts"
+import * as utils from "../util"
+import * as Consts from "../../consts"
+import * as wxapi from "../wxapi/wxstorage"
 
-const MUSIC_PATH = "sounds/music/%s";
-const SOUND_PATH = "sounds/sound/%s";
+const MUSIC_PATH = "sounds/music/{0}";
+const SOUND_PATH = "sounds/sound/{0}";
 
 export class AudioPlayer
 {
@@ -40,17 +40,22 @@ export class AudioPlayer
 
     init()
     {
-        let sound_vol_str = localStorage.get(consts.MISC.SOUND_VOL);
-        let music_vol_str = localStorage.get(consts.MISC.MUSIC_VOL);
+        let sound_vol_str = wxapi.wxStorage.get(Consts.Game.SoundVol);
+        let sound_mute_str = wxapi.wxStorage.get(Consts.Game.SoundMute);
+        let music_vol_str = wxapi.wxStorage.get(Consts.Game.MusicVol);
         let sound_vol = sound_vol_str ? parseFloat(sound_vol_str) : 1;
         let music_vol = music_vol_str ? parseFloat(music_vol_str) : 1;        
-        let mute_str = localStorage.get(consts.MISC.SOUND_MUTE);
-        let mute_int = mute_str ? parseInt(mute_str) : 0;
+        let mute_int = sound_mute_str ? parseInt(sound_mute_str) : 0;
         let is_mute = mute_int == 1;
         this.set_music_mute(is_mute);
         this.set_music_volumn(music_vol);
         this.set_sound_mute(is_mute);
         this.set_sound_volumn(sound_vol);
+    }
+
+    flush()
+    {
+        wxapi.wxStorage.set(Consts.Game.SoundMute, this.sound_mute ? "1" : "0");
     }
     
     //同时只能播放一个
@@ -61,7 +66,7 @@ export class AudioPlayer
             this.stop_music();
         }
 
-        let path = format.sprintf(MUSIC_PATH, name);
+        let path = utils.strfmt(MUSIC_PATH, name);
         this.curr_music = name;
 
         if(this.music_mute)
@@ -90,6 +95,11 @@ export class AudioPlayer
         }
         cc.audioEngine.stop(this.music_id);
         this.music_id = -1;
+    }
+
+    get_music_mute()
+    {
+        return this.music_mute;
     }
 
     set_music_mute(is_mute:boolean)
@@ -131,7 +141,7 @@ export class AudioPlayer
             return;
         }
         this.loading_map.set(path, true);
-        loader_mgr.get_inst().loadRawAsset(path, gen_handler(this.on_clip_loaded, this, task));
+        loader_mgr.get_inst().loadRawAsset(path, utils.gen_handler(this.on_clip_loaded, this, task));
     }
 
     private on_clip_loaded(task:AudioPlayTask, clip:cc.AudioClip)
@@ -179,7 +189,7 @@ export class AudioPlayer
             cc.info("sound is mute");
             return;
         }
-        let path = format.sprintf(SOUND_PATH, name);
+        let path = utils.strfmt(SOUND_PATH, name);
         let clip = this.clip_cache.get(path);
         if(clip)
         {
@@ -190,6 +200,11 @@ export class AudioPlayer
             let task:AudioPlayTask = {type:AudioType.Sound, name:name, path:path, volume:this.sound_volume, loop:false};
             this.load_task(task);
         }
+    }
+
+    get_sound_mute()
+    {
+        return this.sound_mute;
     }
 
     set_sound_mute(is_mute:boolean)
@@ -250,11 +265,11 @@ type AudioPlayTask = {
 }
 
 export const AUDIO_CONFIG = {
-    MAIN_BG_MUSIC:"dz_hall_background_music",
-    SGCARD_BG_MUSIC:"background",
-    BUTTON_CLICK:"button_click_sound",
-    SSC_BG_MUSIC:"fruit_bg",
-    SSC_OPEN_NOTIFY:"start",
-    LHC_BG_MUSIC:"fruit_bg",
-    LHC_OPEN_NOTIFY:"start",
+    Audio_Btn:"audio_btn",
+    Audio_Hint:"audio_hint",
+    Audio_Vitory:"audio_victory",
+    Audio_Coin:"audio_chest_open",
+    Audio_XuanZhen:"audio_xuanzhe",
+    Audio_Unlock:"unlock",
+    Audio_Bgm:"bgm",
 }

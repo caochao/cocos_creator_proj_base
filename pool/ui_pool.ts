@@ -52,7 +52,7 @@ export class ui_pool
         {
             this.cache[path] = uis = []; 
         }
-        ui.removeFromParent(true);
+        ui.removeFromParent(false);
         uis.push(ui);
         this.size++;
         this.path2time[path] = cc.sys.now();

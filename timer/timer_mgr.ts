@@ -1,4 +1,4 @@
-import {handler, gen_handler} from "../utils"
+import {handler, gen_handler} from "../util"
 import {LinkList, LinkListNode} from "../linklist"
 
 export class TimerMgr

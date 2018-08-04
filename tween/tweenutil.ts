@@ -1,5 +1,5 @@
 import {TimerMgr} from "../timer/timer_mgr"
-import {handler, gen_handler} from "../utils"
+import {handler, gen_handler} from "../util"
 import {LinkList, LinkListNode} from "../linklist"
 import {TweenFunc} from "./tweenfunc"
 
@@ -202,11 +202,11 @@ export class TweenUtil
                 node.data.exectors.forEach((func) => {
                     func(node.data.duration);
                 });
-                this.kill(node.key);
                 if(node.data.onComplete)
                 {
                     node.data.onComplete.exec(node.data.node, 1);
                 }
+                this.kill(node.key);
                 node = node.next;
                 continue;
             }

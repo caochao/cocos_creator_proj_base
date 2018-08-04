@@ -137,4 +137,6 @@ export const UI_CONFIG = {
     level_result:"panels/panel_levelresult",
     level_reward:"panels/panel_levelreward",
     rank:"panels/panel_rank",
+    newbee_gift:"panels/panel_newbeegift",
+    sos_gift:"panels/panel_sosgift",
 }

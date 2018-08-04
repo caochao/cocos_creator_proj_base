@@ -37,6 +37,11 @@ export class LinkList<T>
         return this._head;
     }
 
+    get tail():LinkListNode<T>
+    {
+        return this._tail;
+    }
+
     append(key:number, data:T):number
     {
         let node:LinkListNode<T> = this.spawn_node(key, data);

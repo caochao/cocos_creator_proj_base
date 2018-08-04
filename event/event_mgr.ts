@@ -69,14 +69,13 @@ export class event_mgr
 }
 
 /**事件名称定义*/
-export const enum Event_Name {
-    USER_INFO_UPDATE,
-    PHONE_CHANGED,
-    PHOTONAME_UPDATE,
-    BALANCE_UPDATE,
-    NOTICE_UPDATED,
-    PACK_ROOM_INFO_UPDATE,
-    BANKCARD_UPDATE,
-    //微信支付返回
-    WXPAY_RETURN,
+export enum Event_Name {
+    USER_INFO_INIT,
+    COIN_CHANGED,
+    PASS_CHANGED,
+    GRADE_CHANGED,
+    SHAREHINT_CHANGED,
+    GAME_LEVEL_CHANGED,
+    UI_SHOW,
+    UI_HIDE,
 }
