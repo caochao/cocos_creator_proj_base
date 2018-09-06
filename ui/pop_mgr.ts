@@ -1,6 +1,10 @@
 import {pool_mgr} from "../pool/pool_mgr"
 import {handler, gen_handler} from "../util"
 import {POP_UI_BASE} from "./pop_ui_base"
+import { TimerMgr } from "../timer/timer_mgr"
+import * as utils from '../util'
+import { TweenUtil } from "../tween/tweenutil"
+import { TweenFunc } from "../tween/tweenfunc"
 
 export class pop_mgr
 {
@@ -59,10 +63,10 @@ export class pop_mgr
     is_show(path:string):boolean
     {
         let ui:pop_ui = this.ui_cache[path];
-        return ui && ui.is_show;
+        return ui != null;
     }
 
-    show(path:string, ...params:any[]):void
+    show(path:string, transition?:UI_TRANSITION, ...params:any[]):void
     {
         let ui:pop_ui = this.get_ui(path);
         if(ui.is_show)
@@ -77,18 +81,26 @@ export class pop_mgr
                 return;
             }
             ui.node = node;
+            //应用过渡效果
+            this.applyTransitionEffect(node, transition);
             cc.director.getScene().addChild(node);
-            //调用show
-            let ui_base:POP_UI_BASE = node.getComponent(POP_UI_BASE);
-            ui_base.ui_name = path;
-            ui_base.__show__(...params);
-            //进栈
-            this.ui_stack.push(path);
-            //钩子函数调用
-            if(this.ui_show_handler)
-            {
-                this.ui_show_handler.exec();
-            }
+            TimerMgr.getInst().once(0, utils.gen_handler(() => {
+                //在加到场景同一帧调用界面show方法，计算位置会不准确，故统一在下一帧调用show
+                if(!ui.is_show)
+                {
+                    return;
+                }
+                let ui_base:POP_UI_BASE = node.getComponent(POP_UI_BASE);
+                ui_base.ui_name = path;
+                ui_base.__show__(...params);
+                //进栈
+                this.ui_stack.push(path);
+                //钩子函数调用
+                if(this.ui_show_handler)
+                {
+                    this.ui_show_handler.exec();
+                }
+            }));
         }, this));
     }
 
@@ -96,7 +108,7 @@ export class pop_mgr
     hide(path:string):void
     {
         let ui:pop_ui = this.ui_cache[path];
-        if(!ui || !ui.is_show)
+        if(!ui)
         {
             return;
         }
@@ -121,6 +133,25 @@ export class pop_mgr
             }
         }
     }
+
+    applyTransitionEffect(node:cc.Node, transition:UI_TRANSITION)
+    {
+        if(transition && transition.transType == UI_TRANSITION_TYPE.None)
+        {
+            return;
+        }
+        transition = transition || {
+            transType:UI_TRANSITION_TYPE.FadeIn, 
+            duration:0.5, 
+            tweenFunc:TweenFunc.Linear
+        };
+        switch(transition.transType)
+        {
+            case UI_TRANSITION_TYPE.FadeIn:
+                TweenUtil.from({node, duration:transition.duration || 1, opacity:0, tweenFunc:transition.tweenFunc || TweenFunc.Linear});
+                break;
+        }
+    }
 }
 
 type pop_ui = {
@@ -139,4 +170,22 @@ export const UI_CONFIG = {
     rank:"panels/panel_rank",
     newbee_gift:"panels/panel_newbeegift",
     sos_gift:"panels/panel_sosgift",
+    login_gift:"panels/panel_logingift",
+}
+
+interface UI_TRANSITION
+{
+    transType:UI_TRANSITION_TYPE;
+    tweenFunc?:Function;
+    duration?:number;
+}
+
+export const enum UI_TRANSITION_TYPE
+{
+    None = 1,
+    FadeIn,
+    DropDown,
+    PopUp,
+    LeftIn,
+    RightIn,
 }

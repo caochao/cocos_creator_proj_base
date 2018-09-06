@@ -71,7 +71,7 @@ export function extend(target, ...sources) {
 
 export function createBreathAction(node:cc.Node)
 {
-    const action = cc.repeatForever(cc.sequence(cc.scaleTo(0.6, 1.1), cc.scaleTo(0.6, 0.9)))
+    const action = cc.repeatForever(cc.sequence(cc.scaleTo(0.6, 1.1), cc.scaleTo(0.6, 0.9)));
     node.runAction(action);
 }
 

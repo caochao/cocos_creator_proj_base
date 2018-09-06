@@ -40,8 +40,8 @@ export class POP_UI_BASE extends cc.Component {
         {
             this.btn_close.node.on(cc.Node.EventType.TOUCH_END, this.onCloseBtnTouch, this);
         }
-        this.on_show(...params);
         this.is_show = true;
+        this.on_show(...params);
 
         //添加遮罩背景
         let overlay:cc.Node = this.node.getChildByName(pop_overlay_bg);
@@ -70,9 +70,9 @@ export class POP_UI_BASE extends cc.Component {
         {
             this.btn_close.node.off(cc.Node.EventType.TOUCH_END, this.onCloseBtnTouch, this);
         }
+        this.is_show = false;
         this.on_hide();
         wxHttpClient.unregisterCtxHandler(this);
-        this.is_show = false;
     }
 
     /**弹出界面时调用，且在onLoad之后调用，可以用来做一些初始化工作*/

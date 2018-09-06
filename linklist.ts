@@ -58,7 +58,7 @@ export class LinkList<T>
         return node.key;
     }
 
-    remove(key:number):T
+    remove(key:number):LinkListNode<T>
     {
         if(!key)
         {
@@ -99,6 +99,6 @@ export class LinkList<T>
             }
         }
         this.pool.push(curr);
-        return curr.data;
+        return curr;
     }
 }

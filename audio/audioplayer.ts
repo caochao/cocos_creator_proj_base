@@ -151,10 +151,10 @@ export class AudioPlayer
         {
             return;
         }
-        this.play_clip(clip, task.volume, task.loop, task.type);
+        this.play_clip(clip, task.volume, task.loop, task.type, task.cb);
     }
 
-    private play_clip(clip:cc.AudioClip, volume:number, loop:boolean, type:AudioType)
+    private play_clip(clip:cc.AudioClip, volume:number, loop:boolean, type:AudioType, cb?:utils.handler)
     {
         let aid = cc.audioEngine.play(clip, loop, volume);
         if(type == AudioType.Music)
@@ -166,6 +166,7 @@ export class AudioPlayer
             this.sound_ids.push(aid);
             cc.audioEngine.setFinishCallback(aid, () => {
                 this.on_sound_finished(aid);
+                cb && cb.exec();
             });
         }
     }
@@ -182,7 +183,7 @@ export class AudioPlayer
     }
 
     //可同时播放多个
-    play_sound(name:string)
+    play_sound(name:string, cb?:utils.handler)
     {
         if(this.sound_mute)
         {
@@ -193,11 +194,11 @@ export class AudioPlayer
         let clip = this.clip_cache.get(path);
         if(clip)
         {
-            this.play_clip(clip, this.sound_volume, false, AudioType.Sound);
+            this.play_clip(clip, this.sound_volume, false, AudioType.Sound, cb);
         }
         else
         {
-            let task:AudioPlayTask = {type:AudioType.Sound, name:name, path:path, volume:this.sound_volume, loop:false};
+            let task:AudioPlayTask = {type:AudioType.Sound, name:name, path:path, volume:this.sound_volume, loop:false, cb};
             this.load_task(task);
         }
     }
@@ -256,12 +257,14 @@ enum AudioType
     Sound = 2,
 }
 
-type AudioPlayTask = {
+interface AudioPlayTask
+{
     type:AudioType;
     name:string;
     path:string;
     volume:number;
     loop:boolean;
+    cb?:utils.handler;
 }
 
 export const AUDIO_CONFIG = {

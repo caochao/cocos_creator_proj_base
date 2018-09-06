@@ -4,7 +4,8 @@ import {LinkList, LinkListNode} from "../linklist"
 export class TimerMgr
 {
     private static inst:TimerMgr;
-    private list:LinkList<TimerHandler>;
+    private iterList:LinkList<TimerHandler>;
+    private pendingList:LinkList<TimerHandler>;
     private pool:TimerHandler[];
     private key:number;
 
@@ -12,7 +13,8 @@ export class TimerMgr
     {
         this.key = 0;
         this.pool = [];
-        this.list = new LinkList<TimerHandler>();
+        this.iterList = new LinkList<TimerHandler>();
+        this.pendingList = new LinkList<TimerHandler>();
     }
 
     static getInst():TimerMgr
@@ -26,31 +28,56 @@ export class TimerMgr
 
     add(interval:number, delay:number, repeat:number, cb:handler, is_updater:boolean = false):number
     {
-        let timerHandler:TimerHandler = this.pool.pop();
-        if(timerHandler)
+        let th = this.pool.pop();
+        if(th)
         {
-            timerHandler.interval = interval;
-            timerHandler.delay = delay;
-            timerHandler.repeat = repeat;
-            timerHandler.elapsed = 0;
-            timerHandler.times = 0;
-            timerHandler.is_updater = is_updater;
-            timerHandler.cb = cb;
+            th.interval = interval;
+            th.delay = delay;
+            th.repeat = repeat;
+            th.elapsed = 0;
+            th.times = 0;
+            th.is_updater = is_updater;
+            th.cb = cb;
         }
         else
         {
-            timerHandler = {interval:interval, delay:delay, repeat:repeat, elapsed:0, times:0, is_updater:is_updater, cb:cb};
+            th = {interval, delay, repeat, elapsed:0, times:0, is_updater, cb};
         }
-        return this.list.append(++this.key, timerHandler);
+        const key = this.pendingList.append(++this.key, th);
+        // cc.info(`[TimerMgr]addPending, key=${key}`);
+        return key;
     }
 
     remove(key:number)
     {
-        let timerHandler:TimerHandler = this.list.remove(key);
-        if(timerHandler)
+        if(!this.removeIter(key))
         {
-            this.pool.push(timerHandler);
+            this.removePending(key);
         }
+    }
+
+    private removeIter(key:number)
+    {
+        const node = this.iterList.remove(key);
+        if(node)
+        {
+            this.pool.push(node.data);
+            // cc.info(`[TimerMgr]removeIter, key=${key}`);
+            return true;
+        }
+        return false;
+    }
+
+    private removePending(key:number)
+    {
+        const node = this.pendingList.remove(key);
+        if(node)
+        {
+            this.pool.push(node.data);
+            // cc.info(`[TimerMgr]removePending, key=${key}`);
+            return true;
+        }
+        return false;
     }
 
     loop(interval:number, cb:handler):number
@@ -85,37 +112,54 @@ export class TimerMgr
 
     update(dt:number)
     {
-        if(!this.list.head)
-        {
-            return;
-        }
-        let node:LinkListNode<TimerHandler> = this.list.head;
+        let node = this.iterList.head;
+
+        //执行当前帧的定时器
         while(node)
         {
             if(node.data.is_updater)
             {
+                //先保存next引用，防止回调函数里回收node导致next被修改
+                const next = node.next;
                 node.data.cb.exec(dt);
-                node = node.next;
+                node = next;
                 continue;
             }
 
             if(node.data.repeat != 0 && node.data.times >= node.data.repeat)
             {
-                this.remove(node.key);
-                node = node.next;
+                const next = node.next;
+                this.removeIter(node.key);
+                node = next;
                 continue;
             }
 
             if(node.data.elapsed >= node.data.delay + node.data.interval)
             {
+                //exec回调可能会调用remove函数回收timerHandler.避免操作已回收的对象。
+                // cc.info(`[TimerMgr]execHandler, key=${node.key}`);
+                const next = node.next;
                 node.data.times++;
-                node.data.elapsed = node.data.delay - dt;
-                //todo fix:在timer回调函数里先remove，再add一个定时器，复用data会导致times和elpased马上被修改
+                node.data.elapsed = node.data.delay;
                 node.data.cb.exec();
+                node = next;
             }
-
-            node.data.elapsed += dt;
+            else
+            {
+                node.data.elapsed += dt;
+                node = node.next;
+            }
+        }
+        
+        //添加下一帧的定时器
+        node = this.pendingList.head;
+        while(node)
+        {
+            const key = node.key;
+            const th = node.data;
             node = node.next;
+            this.pendingList.remove(key);
+            this.iterList.append(key, th);
         }
     }
 }

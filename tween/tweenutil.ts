@@ -1,12 +1,13 @@
 import {TimerMgr} from "../timer/timer_mgr"
 import {handler, gen_handler} from "../util"
-import {LinkList, LinkListNode} from "../linklist"
+import {LinkList} from "../linklist"
 import {TweenFunc} from "./tweenfunc"
 
 export class TweenUtil
 {
     private static inst:TweenUtil;
-    private list:LinkList<TweenHandler>;
+    private iterList:LinkList<TweenHandler>;
+    private pendingList:LinkList<TweenHandler>;
     private pool:TweenHandler[];
     private key:number;
     private timer:number;
@@ -15,7 +16,8 @@ export class TweenUtil
     {
         this.key = 0;
         this.pool = [];
-        this.list = new LinkList<TweenHandler>();
+        this.iterList = new LinkList<TweenHandler>();
+        this.pendingList = new LinkList<TweenHandler>();
     }
 
     public static getInst()
@@ -29,14 +31,14 @@ export class TweenUtil
 
     to(params:TweenParams):number
     {
-        let node = params.node;
+        const node = params.node;
         if(!node || !cc.isValid(node))
         {
             cc.warn("invalid node");
             return 0;
         }
 
-        let th:TweenHandler = this.pool.pop();
+        let th = this.pool.pop();
         if(!th)
         {
             th = {
@@ -55,55 +57,55 @@ export class TweenUtil
 
         if(params.x != null)
         {
-            let from = node.x;
-            let delta = params.x - from;
+            const from = node.x;
+            const delta = params.x - from;
             th.exectors.push((elapsed) => {
-                let curr_x = th.tweenFunc(elapsed, from, delta, th.duration);
+                const curr_x = th.tweenFunc(elapsed, from, delta, th.duration);
                 th.node.x = curr_x;     //测试发现用node.position.x，不能移动位置
             });
         }
         if(params.y != null)
         {
-            let from = node.y;
-            let delta = params.y - from;
+            const from = node.y;
+            const delta = params.y - from;
             th.exectors.push((elapsed) => {
-                let curr_y = th.tweenFunc(elapsed, from, delta, th.duration);
+                const curr_y = th.tweenFunc(elapsed, from, delta, th.duration);
                 th.node.y = curr_y;
             });
         }
         if(params.rotation != null)
         {
-            let from = node.rotation;
-            let delta = params.rotation - from;
+            const from = node.rotation;
+            const delta = params.rotation - from;
             th.exectors.push((elapsed) => {
-                let curr_rot = th.tweenFunc(elapsed, from, delta, th.duration);
+                const curr_rot = th.tweenFunc(elapsed, from, delta, th.duration);
                 th.node.rotation = curr_rot;
             });
         }
         if(params.width != null)
         {
-            let from = node.width;
-            let delta = params.width - from;
+            const from = node.width;
+            const delta = params.width - from;
             th.exectors.push((elapsed) => {
-                let curr_width = th.tweenFunc(elapsed, from, delta, th.duration);
+                const curr_width = th.tweenFunc(elapsed, from, delta, th.duration);
                 th.node.width = curr_width;
             });
         }
         if(params.height != null)
         {
-            let from = node.height;
-            let delta = params.height - from;
+            const from = node.height;
+            const delta = params.height - from;
             th.exectors.push((elapsed) => {
-                let curr_height = th.tweenFunc(elapsed, from, delta, th.duration);
+                const curr_height = th.tweenFunc(elapsed, from, delta, th.duration);
                 th.node.height = curr_height;
             });
         }
         if(params.opacity != null)
         {
-            let from = node.opacity;
-            let delta = params.opacity - from;
+            const from = node.opacity;
+            const delta = params.opacity - from;
             th.exectors.push((elapsed) => {
-                let curr_opacity = th.tweenFunc(elapsed, from, delta, th.duration);
+                const curr_opacity = th.tweenFunc(elapsed, from, delta, th.duration);
                 th.node.opacity = curr_opacity;
             });
         }
@@ -112,12 +114,12 @@ export class TweenUtil
         {
             this.timer = TimerMgr.getInst().add_updater(gen_handler(this.update, this));
         }
-        return this.list.append(++this.key, th);
+        return this.pendingList.append(++this.key, th);
     }
 
     from(params:TweenParams):number
     {
-        let node = params.node;
+        const node = params.node;
         if(!node || !cc.isValid(node))
         {
             cc.warn("invalid node");
@@ -152,11 +154,32 @@ export class TweenUtil
 
     kill(key:number)
     {
-        let tweenHandler:TweenHandler = this.list.remove(key);
-        if(tweenHandler)
+        if(!this.killIter(key))
         {
-            this.pool.push(tweenHandler);
+            this.killPending(key);
         }
+    }
+
+    private killIter(key:number)
+    {
+        const node = this.iterList.remove(key);
+        if(node)
+        {
+            this.pool.push(node.data);
+            return true;
+        }
+        return false;
+    }
+
+    private killPending(key:number)
+    {
+        const node = this.pendingList.remove(key);
+        if(node)
+        {
+            this.pool.push(node.data);
+            return true;
+        }
+        return false;
     }
 
     static from(params:TweenParams):number
@@ -176,57 +199,81 @@ export class TweenUtil
 
     private update(dt:number)
     {
-        let node:LinkListNode<TweenHandler> = this.list.head;
-        if(!node)
+        //什么都没有，停止定时器
+        if(!this.iterList.head && !this.pendingList.head)
         {
-            if(this.timer)
-            {
-                TimerMgr.getInst().remove(this.timer);
-            }
+            TimerMgr.getInst().remove(this.timer);
             this.timer = 0;
             return;
         }
+
+        //执行当前帧的th
+        let node = this.iterList.head;
         while(node)
         {
             //节点已失效
-            if(!node.data.node || !cc.isValid(node.data.node))
+            const displayNode = node.data.node;
+            if(!displayNode || !cc.isValid(displayNode))
             {
-                this.kill(node.key);
-                node = node.next;
+                //先保存next引用，防止回调函数里回收node导致next被修改
+                const next = node.next;
+                this.killIter(node.key);
+                node = next;
                 continue;
             }
+            
+            const elapsed = node.data.elapsed;
+            const delay = node.data.delay;
+            const duration = node.data.duration;
 
             //执行完毕
-            if(node.data.elapsed >= node.data.duration + node.data.delay)
+            if(elapsed >= duration + delay)
             {
-                node.data.exectors.forEach((func) => {
-                    func(node.data.duration);
+                const next = node.next;
+                const key = node.key;
+                node.data.exectors.forEach(func => {
+                    func(duration);
                 });
                 if(node.data.onComplete)
                 {
-                    node.data.onComplete.exec(node.data.node, 1);
+                    node.data.onComplete.exec(displayNode, 1);
                 }
-                this.kill(node.key);
-                node = node.next;
+                this.killIter(key);
+                node = next;
                 continue;
             }
 
             //延时时间到了
-            if(node.data.elapsed >= node.data.delay)
+            if(elapsed >= delay)
             {
+                //onUpdate回调可能会调用kill回收tweenHandler.避免操作已回收的对象。
+                const next = node.next;
+                node.data.elapsed += dt;
+                node.data.exectors.forEach(func => {
+                    func(elapsed - delay);
+                });
                 if(node.data.onUpdate)
                 {
-                    node.data.onUpdate.exec(
-                        node.data.node,
-                        this.clamp01((node.data.elapsed - node.data.delay) / node.data.duration)
-                    );
+                    node.data.onUpdate.exec(displayNode, this.clamp01((elapsed - delay) / duration));
                 }
-                node.data.exectors.forEach((func) => {
-                    func(node.data.elapsed - node.data.delay);
-                });
+                node = next;
             }
-            node.data.elapsed += dt;
-            node = node.next;  
+            else
+            {
+                node.data.elapsed += dt;
+                node = node.next;  
+            }
+        }
+
+        //添加下一帧的th
+        node = this.pendingList.head;
+        while(node)
+        {
+            const key = node.key;
+            const th = node.data;
+            node = node.next;
+            this.pendingList.remove(key);
+            this.iterList.append(key, th);
         }
     }
     

@@ -70,7 +70,7 @@ export class event_mgr
 
 /**事件名称定义*/
 export enum Event_Name {
-    USER_INFO_INIT,
+    USER_INFO_CHANGED,
     COIN_CHANGED,
     PASS_CHANGED,
     GRADE_CHANGED,
@@ -78,4 +78,7 @@ export enum Event_Name {
     GAME_LEVEL_CHANGED,
     UI_SHOW,
     UI_HIDE,
+    LEVEL_DATA_LOADED,
+    MUTE_MUSIC,
+    UNMUTE_MUSIC,
 }
