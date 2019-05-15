@@ -34,6 +34,7 @@
          this._listView.set_data(this._songs);
      }
     ```
+
     * 实现列表item回调方法
     ```
     export class UnlockNewSongItem extends ListViewItem 
@@ -141,6 +142,7 @@
         this._songsView.set_data(itemDatas);
     }
     ```
+
     * 实现列表item回调方法
     ```
     export class LatestSongPushItem extends ScrollViewItem
@@ -231,6 +233,7 @@
         }
     }
     ```
+
     * 追加数据, 传入key及item数据
     ```
     const notify:pb.IRoomChatNotify = resp.roomChatNotify;
@@ -238,8 +241,55 @@
     let data:ScrollItemData = {key:key.toString(), data:notify};
     this.scview.append_data(data);
     ```
+
+ 3.TabView, 多标签界面。支持按需加载。
+
+    * 初始化TabView, 传入tab根节点, tab页父节点, tab页class及对应prefab, tabbtn节点路径及文本.
+    ```
+    this._tabView = new TabView({
+        tabContainer: this.tabContainer,
+        pageContainer: this.pageContainer,
+        pages:[
+            {
+                key:TabKeys.LatestSongs,
+                btnPath:"tab1",
+                btnTxt:i18n.t("新歌"),
+                resPath:"prefabs/pages/latestSongView",
+                clazz:LatestSongView,
+            },
+            {
+                key:TabKeys.MainSongs,
+                btnPath:"tab2",
+                btnTxt:i18n.t("音乐"),
+                resPath:"prefabs/pages/mainSongView",
+                clazz:MainSongView,
+            },
+        ],
+        onTabSelected:this.onTabSelected.bind(this),
+    });
+    ```
+
+    * 实现tab页
+    ```
+    export class MainSongView extends TabPage
+    {
+        onInit()
+        {
+            //...
+        }
+
+        protected onBecameVisible()
+        {
+            //...
+        }
+
+        protected onBecameInvisible()
+        {
+            //...
+        }
+    ```
  
- 3.TweenUtil, 缓动工具
+ 4.TweenUtil, 缓动工具
  
     * 传入节点，用时，延时，要变动的属性, 曲线函数
     ```
@@ -253,7 +303,7 @@
     TweenUtil.kill(tween);
     ```
     
- 4.TimerMgr, 定时器
+ 5.TimerMgr, 定时器
     
     * 无限循环
     ```
