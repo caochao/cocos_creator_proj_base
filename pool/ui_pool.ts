@@ -1,86 +1,88 @@
+const DestroyAtOnce = false;
+
 //lru(last recently used) cache
 export class ui_pool
 {
-    private cache:any; //path => cc.Node[]
-    private path2time:any;
+    private path2nodes:Map<string, cc.Node[]>; //path => cc.Node[]
+    private path2time:Map<string, number>;
     private size:number;
-    private max_size:number = 2;
+    private max_size = 2;
 
     constructor()
     {
-        this.cache = {};
-        this.path2time = {};
+        this.path2nodes = new Map();
+        this.path2time = new Map();
         this.size = 0;
     }
 
-    get(path:string):cc.Node
+    get(path:string)
     {
-        let uis:cc.Node[] = this.cache[path];
-        if(uis && uis.length > 0)
+        const nodes = this.path2nodes.get(path);
+        if(nodes && nodes.length > 0)
         {
             this.size--;
-            return uis.pop();
+            return nodes.pop();
         }
         return null;
     }
 
-    put(path:string, ui:cc.Node):void
+    put(path:string, node:cc.Node, destroyAtOnce:boolean)
     {
+        if(DestroyAtOnce || destroyAtOnce)
+        {
+            node.destroy();
+            return;
+        }
         if(this.size >= this.max_size)
         {
             //删除最早的缓存
             let del_path:string;
-            let ts:number = cc.sys.now();
-            for(let p in this.cache)
-            {
-                if(this.cache[p].length > 0 && this.path2time[p] < ts)
+            let ts = cc.sys.now();
+            this.path2nodes.forEach((nodes, p) => {
+                if(nodes.length > 0 && this.path2time.get(p) < ts)
                 {
-                    ts = this.path2time[p];
+                    ts = this.path2time.get(p);
                     del_path = p;
                 }
-            }
-            if(del_path && del_path != "")
+            });
+            if(del_path)
             {
-                let del_ui:cc.Node = this.cache[del_path].pop();
-                del_ui.destroy();
+                const del_node = this.path2nodes.get(del_path).pop();
+                del_node.destroy();
                 this.size--;
-                // cc.info("ui_pool:pool capacity is max, destroy old ui,", del_path);
+                cc.log("ui_pool:pool capacity is max, destroy old ui,", del_path);
             }
         }
-        let uis:cc.Node[] = this.cache[path];
-        if(!uis)
+        let nodes = this.path2nodes.get(path);
+        if(!nodes)
         {
-            this.cache[path] = uis = []; 
+            nodes = [];
+            this.path2nodes.set(path, nodes);
         }
-        ui.removeFromParent(false);
-        uis.push(ui);
+        node.removeFromParent(false);
+        nodes.push(node);
         this.size++;
-        this.path2time[path] = cc.sys.now();
+        this.path2time.set(path, cc.sys.now());
     }
 
     clear_atpath(path:string):void
     {
-        let uis:cc.Node[] = this.cache[path];
-        if(!uis || uis.length <= 0)
+        const nodes = this.path2nodes.get(path);
+        while(nodes && nodes.length > 0)
         {
-            return;
-        }
-        while(uis.length > 0)
-        {
-            let ui:cc.Node = uis.pop();
-            ui.destroy();
+            const node = nodes.pop();
+            node.destroy();
             this.size--;
         }
     }
 
     clear():void
     {
-        for(let path in this.cache)
-        {
+        this.path2nodes.forEach((_, path) => {
             this.clear_atpath(path);
-        }
-        this.cache = {};
-        this.path2time = {};
+        });
+        this.path2nodes.clear();
+        this.path2time.clear();
         if(this.size != 0)
         {
             cc.warn("size should be 0, but now is", this.size);
@@ -90,13 +92,12 @@ export class ui_pool
     dump()
     {
         let str:string = "********ui_pool dump********";
-        for(let path in this.cache)
-        {
+        this.path2nodes.forEach((nodes, path) => {
             str += "\n" + path + "\n";
-            this.cache[path].forEach((u:cc.Node):void=>{
-                str += u.name + ",";
+            nodes.forEach(node => {
+                str += node.name + ",";
             });
-        }
-        cc.info(str);
+        });
+        cc.log(str);
     }
 }

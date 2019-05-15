@@ -1,7 +1,7 @@
 import {loader_mgr} from "../loader/loader_mgr"
 import * as utils from "../util"
-import * as Consts from "../../consts"
-import * as wxapi from "../wxapi/wxstorage"
+import { LocalStorage } from "../misc/storage";
+import { Consts } from "../../const";
 
 const MUSIC_PATH = "sounds/music/{0}";
 const SOUND_PATH = "sounds/sound/{0}";
@@ -9,10 +9,10 @@ const SOUND_PATH = "sounds/sound/{0}";
 export class AudioPlayer
 {
     private static inst:AudioPlayer;
-    private clip_cache:Map<string, cc.AudioClip>;
     private loading_map:Map<string, boolean>;
 
     private curr_music:string;
+    private curr_volume:number;
     private music_id:number;
     private music_volume:number;
     private music_mute:boolean;
@@ -20,13 +20,14 @@ export class AudioPlayer
     private sound_ids:number[];
     private sound_volume:number;
     private sound_mute:boolean;
+    private storage:LocalStorage;
 
     private constructor()
     {
         this.music_id = -1;
         this.sound_ids = [];
-        this.clip_cache = new Map();
         this.loading_map = new Map();
+        this.storage = LocalStorage.getInst();
     }
 
     static getInst()
@@ -40,13 +41,9 @@ export class AudioPlayer
 
     init()
     {
-        let sound_vol_str = wxapi.wxStorage.get(Consts.Game.SoundVol);
-        let sound_mute_str = wxapi.wxStorage.get(Consts.Game.SoundMute);
-        let music_vol_str = wxapi.wxStorage.get(Consts.Game.MusicVol);
-        let sound_vol = sound_vol_str ? parseFloat(sound_vol_str) : 1;
-        let music_vol = music_vol_str ? parseFloat(music_vol_str) : 1;        
-        let mute_int = sound_mute_str ? parseInt(sound_mute_str) : 0;
-        let is_mute = mute_int == 1;
+        let sound_vol = this.storage.getFloat(Consts.SoundVol, 1);
+        let music_vol = this.storage.getFloat(Consts.MusicVol, 1);
+        let is_mute = this.storage.getBool(Consts.SoundMute);
         this.set_music_mute(is_mute);
         this.set_music_volumn(music_vol);
         this.set_sound_mute(is_mute);
@@ -55,42 +52,36 @@ export class AudioPlayer
 
     flush()
     {
-        wxapi.wxStorage.set(Consts.Game.SoundMute, this.sound_mute ? "1" : "0");
+        // this.storage.setBool(Consts.SoundMute, this.sound_mute);
     }
     
     //同时只能播放一个
-    play_music(name:string)
+    play_music(name:string, pVolume:number = null)
     {
         if(this.music_id >= 0)
         {
             this.stop_music();
         }
 
-        let path = utils.strfmt(MUSIC_PATH, name);
+        const path = utils.strfmt(MUSIC_PATH, name);
         this.curr_music = name;
+        this.curr_volume = pVolume;
 
         if(this.music_mute)
         {
-            cc.info("music is mute");
+            cc.log("music is mute");
             return;
         }
-        let clip = this.clip_cache.get(path);
-        if(clip)
-        {
-            this.play_clip(clip, this.music_volume, true, AudioType.Music);
-        }
-        else
-        {
-            let task:AudioPlayTask = {type:AudioType.Music, name:name, path:path, volume:this.music_volume, loop:true};
-            this.load_task(task);
-        }
+        const volume = pVolume || this.music_volume;
+        const task:AudioPlayTask = {type:AudioType.Music, name, path, volume, loop:true};
+        this.load_task(task);
     }
 
     stop_music()
     {
         if(this.music_id < 0)
         {
-            cc.info("no music is playing");
+            cc.log("no music is playing");
             return;
         }
         cc.audioEngine.stop(this.music_id);
@@ -109,7 +100,11 @@ export class AudioPlayer
         {
             if(!is_mute && this.curr_music)
             {
-                this.play_music(this.curr_music);
+                const music_id = this.curr_music;
+                const volume = this.curr_volume;
+                this.curr_music = null;
+                this.curr_volume = null;
+                this.play_music(music_id, volume);
             }
             return;
         }
@@ -135,18 +130,25 @@ export class AudioPlayer
 
     private load_task(task:AudioPlayTask)
     {
-        let path = task.path;
+        const path = task.path;
         if(this.loading_map.get(path))
         {
             return;
         }
         this.loading_map.set(path, true);
-        loader_mgr.get_inst().loadRawAsset(path, utils.gen_handler(this.on_clip_loaded, this, task));
+        if(task.external)
+        {
+            loader_mgr.get_inst().loadExternalAsset(path, utils.gen_handler(this.on_clip_loaded, this, task));
+        }
+        else
+        {
+            loader_mgr.get_inst().loadRes(path, utils.gen_handler(this.on_clip_loaded, this, task));
+        }
     }
 
     private on_clip_loaded(task:AudioPlayTask, clip:cc.AudioClip)
     {
-        this.clip_cache.set(task.path, clip);
+        this.loading_map.delete(task.path);
         if(task.type == AudioType.Music && task.name != this.curr_music)
         {
             return;
@@ -183,24 +185,29 @@ export class AudioPlayer
     }
 
     //可同时播放多个
-    play_sound(name:string, cb?:utils.handler)
+    play_sound(name:string, loop = false, pVolume:number = null, cb?:utils.handler)
     {
         if(this.sound_mute)
         {
-            cc.info("sound is mute");
+            cc.log("sound is mute");
             return;
         }
-        let path = utils.strfmt(SOUND_PATH, name);
-        let clip = this.clip_cache.get(path);
-        if(clip)
+        const path = utils.strfmt(SOUND_PATH, name);
+        const volume = pVolume || this.sound_volume;
+        const task:AudioPlayTask = {type:AudioType.Sound, name, path, volume, loop, cb};
+        this.load_task(task);
+    }
+
+    play_external_sound(path:string, loop = false, pVolume:number = null, cb?:utils.handler)
+    {
+        if(this.sound_mute)
         {
-            this.play_clip(clip, this.sound_volume, false, AudioType.Sound, cb);
+            cc.log("sound is mute");
+            return;
         }
-        else
-        {
-            let task:AudioPlayTask = {type:AudioType.Sound, name:name, path:path, volume:this.sound_volume, loop:false, cb};
-            this.load_task(task);
-        }
+        const volume = pVolume || this.sound_volume;
+        const task:AudioPlayTask = {type:AudioType.Sound, name:path, path, volume, loop, external:true, cb};
+        this.load_task(task);
     }
 
     get_sound_mute()
@@ -242,10 +249,7 @@ export class AudioPlayer
 
     clear_cache()
     {
-        this.clip_cache.forEach((clip, key) => {
-            loader_mgr.get_inst().release(clip);
-        });
-        this.clip_cache.clear();
+        this.stop_music();
         this.loading_map.clear();
         cc.audioEngine.uncacheAll();
     }
@@ -264,15 +268,12 @@ interface AudioPlayTask
     path:string;
     volume:number;
     loop:boolean;
+    external?:boolean;
     cb?:utils.handler;
 }
 
 export const AUDIO_CONFIG = {
-    Audio_Btn:"audio_btn",
-    Audio_Hint:"audio_hint",
-    Audio_Vitory:"audio_victory",
-    Audio_Coin:"audio_chest_open",
-    Audio_XuanZhen:"audio_xuanzhe",
-    Audio_Unlock:"unlock",
-    Audio_Bgm:"bgm",
+    SE_01:"SE_01",
+    SE_02:"SE_02",
+    SE_03:"SE_03",
 }

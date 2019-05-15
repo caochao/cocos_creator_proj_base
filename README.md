@@ -3,130 +3,232 @@
  
  使用说明
  
- 1.ListView, 循环滚动列表，固定尺寸item, 屏幕可见范围外item会回收等待下次复用。支持横向，竖向，多行多列。
+ 1.ListView, 循环滚动列表，固定尺寸item, 屏幕可见范围外item会回收等待下次复用。支持横向，竖向，多行多列。支持追加删除数据。支持上右下左padding, 支持设置item锚点。
     
-    * 初始化，传入item模板节点(cc.Node)，设置各种回调函数
+    * 初始化，传入各种参数，设置item class
     ```
-    @property(cc.ScrollView)
-     scrollview: cc.ScrollView = null;
- 
      @property(cc.Node)
-     mask: cc.Node = null;
+     scrollView: cc.Node = null;
  
-     @property(cc.Node)
-     content: cc.Node = null;
- 
-     @property(cc.Node)
-     item_tpl:cc.Node = null;
- 
-     private list:ListView.ListView;
+     private _listView:ListView;
  
      on_show(...params)
      {
-         this.list = new ListView.ListView({
-             scrollview:this.scrollview,
-             mask:this.mask,
-             content:this.content,
-             item_tpl:this.item_tpl,
-             cb_host:this,
-             item_setter:this.list_item_setter,
-             select_cb:this.list_item_onselect,
-             recycle_cb:this.list_item_onrecycle,
+         const maskNode = this.scrollView.getChildByName("mask");
+         const content = maskNode.getChildByName("content");
+         const item_tpl = content.getChildByName("item");
+         const scrollview = this.scrollView.getComponent(cc.ScrollView);
+         const mask = maskNode.getComponent(cc.Mask);
+         this._listView = new ListView({
+             scrollview,
+             mask,
+             content,
+             item_tpl,
+             item_class:UnlockNewSongItem,
              column:1,
-             gap_y:10,
-             direction:ListView.ListViewDir.Vertical,
+             gap_y:8,
+             item_anchorX:0.5,
+             item_anchorY:0.5,
+             direction:ListViewDir.Vertical,
          });
-         this.list.set_data(Consts.AllStages);
+         this._listView.set_data(this._songs);
      }
     ```
-    * 设置item回调函数
+    * 实现列表item回调方法
     ```
-    list_item_setter(item:cc.Node, desc:Consts.StageDesc, index:number):void
-     {
-         const isOpen = appdata.getStageOpenState(desc.stage, desc.unlockcond, desc.total);
-         const isPassed = appdata.isStagePassed(desc.stage, desc.total);
- 
-         const cond = item.getChildByName("cond");
-         const txt_cond = cond.getChildByName("txt_cond");
-         const txt_progress = item.getChildByName("txt_progress");
-         const btn_share = item.getChildByName("btn_share");
-         const img_star = item.getChildByName("img_star");
-         const gold_star = img_star.getChildByName("gold_star");
-         //省略
-     }
-    ```
-    
-    
- 2.ScrollView, 循环滚动列表，支持不定尺寸的item, 屏幕可见范围外item会回收等待下次复用。支持横向，竖向, 但不支持多行多列。
- 
-    * 初始化，传入item模板节点(cc.Node)列表，设置各种回调函数
-    ```
-    const templates:ScrollItemTemplate[] = [
-       {key:MsgType.ROUND_START.toString(), node:this.item_roundstart},
-       {key:MsgType.LEFT_REDPACK.toString(), node:this.item_leftpack},
-       {key:MsgType.RIGHT_REDPACK.toString(), node:this.item_rightpack},
-       {key:MsgType.GRAB_NOTIFY.toString(), node:this.item_grab},
-       {key:MsgType.ROUND_END.toString(), node:this.item_common},
-       {key:MsgType.ROUND_RESULT.toString(), node:this.item_roundresult},
-       {key:MsgType.LEFT_CHAT.toString(), node:this.item_leftchat},
-       {key:MsgType.RIGHT_CHAT.toString(), node:this.item_rightchat},
-       {key:MsgType.JOIN_ROOM_NOTIFY.toString(), node:this.item_common},
-       {key:MsgType.QUIT_ROOM_NOTIFY.toString(), node:this.item_common},
-       {key:MsgType.DISMISS_ROOM_NOTIFY.toString(), node:this.item_common},
-       {key:MsgType.ROUND_TIMEOUT_NOTICE.toString(), node:this.item_common},
-    ];
-    this.scview = new ScrollView({
-        scrollview:this.scrollview,
-        mask:this.mask,
-        content:this.content,
-        item_templates:templates,
-        cb_host:this,
-        item_setter:this.item_setter,
-        recycle_cb:this.list_item_recyle,
-        gap_y:10,
-        auto_scrolling:true,
-        direction:ScrollDirection.Vertical,
-    });
-    ```
-    * 设置item回调内部根据传入的key及data为对应item节点设置数据
-    ```
-    item_setter(item:cc.Node, key:string, data:any, index:number):[number, number]
+    export class UnlockNewSongItem extends ListViewItem 
     {
-      const enum_key:number = parseInt(key);
-      switch(enum_key)
-      {
-          case MsgType.ROUND_START:
-              item.getComponent(cc.Label).string = format.sprintf("第%d轮开始", data);
-              return [item.width, item.height];
+        private _bg:cc.Sprite;
+        private _txtSongName:cc.Label;
+        private _txtAuthor:cc.Label;
+        private _listenView:TrialListenView;
+
+        onInit()
+        {
+            const node = this.node;
+            this._txtSongName = node.getChildByName("songName").getComponent(cc.Label);
+            this._txtAuthor = node.getChildByName("author").getComponent(cc.Label);
+
+            this._listenView = new TrialListenView();
+            this._listenView.addTo(node, 223, -151);
+        }
+
+        onUnInit()
+        {
+            this._listenView.destroy();
+            this._listenView = null;
+        }
+
+        onSetData(songId:number, index:number)
+        {
+            const songCfg = appData.songLibrary.get(songId);
+            if(!songCfg) return;
+            
+            //songname
+            this._txtSongName.string = songCfg.name;
+            this._txtAuthor.string = songCfg.author;
+
+            this._likeView.setVisible(true);
+            this._likeView.setLike(localData.songInfo.isFavoriteSong(songId));
+
+            //试听
+            if(songCfg.hasMp3) {
+                const listenState = Mp3Player.getInst().getListenState(songId);
+                this._listenView.setState(listenState || SongListenState.Idle);
+            }
+            else {
+                this._listenView.setState(SongListenState.None);
+            }
+        }
+
+        onRecycle(songId:number)
+        {
+            this._listenView.setState(SongListenState.None);
+        }
+
+        onTouchEnd(touchPos:cc.Vec2, songId:number, index:number)
+        {
+            if(this._listenView.handleTouchEnd(touchPos, songId)) {
+                return;
+            }
+            if(this._likeView.handleTouchEnd(touchPos, songId, source)) {
+                return;
+            }
+        }
+    }
+    ```
+    
+    
+ 2.ScrollView, 循环滚动列表，支持不定尺寸的item, 屏幕可见范围外item会回收等待下次复用。支持横向，竖向, 但不支持多行多列。支持追加删除数据。支持上右下左padding, 支持设置item锚点。
  
-          case MsgType.LEFT_REDPACK:
-          case MsgType.RIGHT_REDPACK:
-              return this.set_pack_item(item, data);
- 
-          case MsgType.ROUND_RESULT:
-              let node_names:cc.Node = item.getChildByName("names");
-              node_names.getComponent(cc.Label).string = data;
-              item.height = node_names.height - node_names.y;
-              return [item.width, item.height];
- 
-          case MsgType.LEFT_CHAT:
-          case MsgType.RIGHT_CHAT:
-              return this.set_chat_item(item, data);
- 
-          case MsgType.GRAB_NOTIFY:
-              return this.set_grab_item(item, data);
- 
-          case MsgType.DISMISS_ROOM_NOTIFY:
-          case MsgType.ROUND_TIMEOUT_NOTICE:
-          case MsgType.JOIN_ROOM_NOTIFY:
-          case MsgType.QUIT_ROOM_NOTIFY:
-          case MsgType.ROUND_END:
-              item.getComponent(cc.Label).string = data as string;
-              return [item.width, item.height];
- 
-          default:
-              return [0, 0];
-      }
+    * 初始化，传入各种参数，设置item class
+    ```
+    @property(cc.Node)
+    scrollView:cc.Node = null;
+
+    private initSongsView()
+    {
+        const maskNode = this.scrollView.getChildByName("mask");
+        const content = maskNode.getChildByName("content");
+        const item_tpl = content.getChildByName("item");
+        const scrollview = this.scrollView.getComponent(cc.ScrollView);
+        const mask = maskNode.getComponent(cc.Mask);
+        const templates:ScrollItemTemplate[] = [
+            {key:PushViewItemType.PushSongItem, node:item_tpl, item_class:LatestSongPushItem},
+        ];
+        this._songsView = new ScrollPage({
+            scrollview,
+            mask,
+            content,
+            item_templates:templates,
+            gap_x:-30,
+            padding_left:124,
+            padding_right:124,
+            padding_top:200,
+            direction:ScrollDirection.Horizontal,
+            cb_host:this,
+            on_turning:this.onTurning,
+            on_scrolling:this.onScrolling,
+            item_anchorX:0.5,
+            item_anchorY:0.5,
+        });
+        const itemDatas:ScrollItemData[] = this._songs.map(data => {
+            return {
+                key:PushViewItemType.PushSongItem,
+                data,
+            }
+        });
+        this._songsView.set_data(itemDatas);
+    }
+    ```
+    * 实现列表item回调方法
+    ```
+    export class LatestSongPushItem extends ScrollViewItem
+    {
+        private _defaultCover:cc.Node;
+        private _coverSprite:cc.Sprite;
+        private _coverSpriteFrame:cc.SpriteFrame;
+        private _listenView:TrialListenView;
+
+        onInit(key:PushViewItemType)
+        {
+            const node = this.node;
+            this._defaultCover = node.getChildByName("defaultCover");
+            this._coverSprite = node.getChildByName("cover").getComponent(cc.Sprite);
+
+            this._coverSpriteFrame = new cc.SpriteFrame();
+            this._coverSpriteFrame.name = "LatestSongPushItemSpriteFrame";
+
+            this._listenView = new TrialListenView({
+                prefabPath:"prefabs/misc/trialListen2",
+                downloadingTexure:"xinge_tanchuang_shiting_02",
+                listeningDbPath:"main/xinge_shiting_dh",
+                listeningDbArmature:"xinge_shiting_dh",
+                listeningDbAnim:"xinge_shiting_dh",
+                listeningDbPosX:0,
+                listeningDbPosY:0,
+            });
+            this._listenView.addTo(node, 89, -331);
+        }
+
+        onUnInit(key:PushViewItemType)
+        {
+            this._listenView.destroy();
+            this._listenView = null;
+
+            this._coverSpriteFrame.clearTexture();
+            // this._coverSpriteFrame.destroy();
+            this._coverSpriteFrame = null;
+        }
+
+        private _currSongId:number;
+        onSetData(key:PushViewItemType, songId:number, index:number, is_mesure:boolean):[number, number]
+        {
+            if(is_mesure) {
+                return [this.node.width, this.node.height];
+            }
+
+            const songCfg = appData.songLibrary.get(songId);
+            if(!songCfg) return [this.node.width, this.node.height];
+
+            this._defaultCover.active = !songCfg.cover;
+            this._coverSprite.node.active = !!songCfg.cover;
+            if(songCfg.cover) {
+                this._currSongId = songId;
+                ImageUtil.getInst().setExternalSpriteFrame(songCfg.cover, songId, (tag, tex) => {
+                    if(tag == this._currSongId && cc.isValid(this.node) && cc.isValid(this._coverSpriteFrame)) {
+                        this._coverSpriteFrame.setTexture(tex);
+                        this._coverSprite.spriteFrame = this._coverSpriteFrame;
+                    }
+                });
+            }
+
+            //试听
+            if(songCfg.hasMp3) {
+                const listenState = Mp3Player.getInst().getListenState(songId);
+                this._listenView.setState(listenState || SongListenState.Idle);
+            }
+            else {
+                this._listenView.setState(SongListenState.None);
+            }
+
+            return [this.node.width, this.node.height];
+        }
+
+        onRecycle(key:PushViewItemType, songId:number, is_mesure:boolean)
+        {
+            if(is_mesure)
+            {
+                return;
+            }
+            this._coverSprite.spriteFrame = null;
+            this._listenView.setState(SongListenState.None);
+        }
+
+        onTouchEnd(key:PushViewItemType, songId:number, touchPos:cc.Vec2, index:number)
+        {
+            this._listenView.handleTouchEnd(touchPos, songId);
+        }
     }
     ```
     * 追加数据, 传入key及item数据
