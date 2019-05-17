@@ -393,11 +393,11 @@ export class ListView
         {
             item = cc.instantiate(this.item_tpl).addComponent(this.item_class) as ListViewItem;
             item.node.active = true;
-            item.onInit();
-            // cc.log("spawn_item", index);
             //仅仅改变父节点锚点，子元素位置不会随之变化
             // item.node.setAnchorPoint(this.item_anchorX, this.item_anchorY);
             LayoutUtil.set_pivot_smart(item.node, this.item_anchorX, this.item_anchorY);
+            item.onInit();
+            // cc.log("spawn_item", index);
         }
         item.node.parent = this.content;
         return item;

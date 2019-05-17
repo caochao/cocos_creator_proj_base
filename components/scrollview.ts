@@ -392,11 +392,11 @@ export class ScrollView extends cc.EventTarget
         {
             item = cc.instantiate(this.item_templates.get(key)).addComponent(this.item_classes.get(key)) as ScrollViewItem;
             item.node.active = true;
-            item.onInit(key);
-            // cc.log("spawn_item, key=", key);
             //仅仅改变父节点锚点，子元素位置不会随之变化
             // item.node.setAnchorPoint(this.item_anchorX, this.item_anchorY);
             LayoutUtil.set_pivot_smart(item.node, this.item_anchorX, this.item_anchorY);
+            item.onInit(key);
+            // cc.log("spawn_item, key=", key);
         }
         if(!is_measure)
         {
