@@ -255,14 +255,6 @@ export class ListView
             }
             let viewport_start = -posx;
             let viewport_stop = viewport_start + this.width;
-            // while(this.packItems[start].x + this.item_width < viewport_start)
-            // {
-            //     start++;
-            // }
-            // while(this.packItems[stop].x > viewport_stop)
-            // {
-            //     stop--;
-            // }
             let start = this.indexFromOffset(viewport_start);
             let stop = this.indexFromOffset(viewport_stop);
 
