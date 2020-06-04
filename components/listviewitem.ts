@@ -2,11 +2,6 @@ const {ccclass, property} = cc._decorator;
 @ccclass
 export class ListViewItem extends cc.Component 
 {
-    // constructor()
-    // {
-    //     super();
-    // }
-
     onInit()
     {
         // cc.log("item初如化");
